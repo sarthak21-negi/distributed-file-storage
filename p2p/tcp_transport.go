@@ -64,14 +64,19 @@ func (t *TCPTransport) handleConn(conn net.Conn){
 
 	if err := t.HandshakeFunc(peer); err != nil{
 		conn.Close()
+		fmt.Printf("TCP handshake error: %s\n", err)
 		return 
 	}
-
-	msg := &Temp{}
+	
+	msg := &Message{}
 	for{
-		if err := t.Decoder.Decode(conn,msg); err != nil {
+		if err := t.Decoder.Decode(conn, msg); err != nil {
 			fmt.Printf("TCP error: %s\n", err)
 			continue
 		}
+
+		msg.From = conn.RemoteAddr()
+	 	
+		fmt.Printf("message: %+v\n", msg)
 	}
 }
