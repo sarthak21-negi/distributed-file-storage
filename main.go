@@ -5,7 +5,15 @@ import(
 	 "github.com/sarthak21-negi/distributed-file-storage/p2p"
 )
 func main(){
-	tr := p2p.NewTCPTransport(":3000")
+
+	tcpOpts := p2p.TCPTransportOpts{
+		ListenAddr: "3000",
+		HandshakeFunc: p2p.NOPHandshakeFunc,
+		Decoder: p2p.GOBDecoder{},
+	}
+
+	tr := p2p.NewTCPTransport(tcpOpts)
+
 	if err := tr.ListenAndAccept(); err != nil{
 		log.Fatal(err)
 	}
