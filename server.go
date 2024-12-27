@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	//"sync"
+	"sync"
 
 	"github.com/sarthak21-negi/distributed-file-storage/p2p"
 )
@@ -18,7 +18,7 @@ type FileServerOpts struct{
 type FileServer struct{
 	FileServerOpts
 
-	//peerLock sync.Mutex
+	peerLock sync.Mutex
 	peers map[string]p2p.Peer
 
 	store *Store
@@ -43,7 +43,11 @@ func (s *FileServer) Stop() {
 	close(s.quitch)
 }
 
-// func (s *FileServer) OnPeer()
+func (s *FileServer) OnPeer(p p2p.Peer) error{
+	s.peerLock.Lock()
+	defer s.peerLock.Unlock()
+	s.peers
+}
 
 func (s *FileServer) loop() {
 	defer func(){
