@@ -48,12 +48,16 @@ func (t *TCPTransport) Consume() <-chan RPC {
 func (t *TCPTransport) Close() error{
 	return t.listener.Close()
 }
+
 // Dial implements the transport interface
 func (t *TCPTransport) Dial(addr string) error{
 	conn, err := net.Dial("tcp", addr)
 	if err != nil{
-		return nil
+		return err
 	}
+
+	fmt.Println(conn)
+
 	go t.handleConn(conn,true)
 
 	return nil

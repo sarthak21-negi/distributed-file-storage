@@ -2,14 +2,14 @@ package main
 
 import (
 	"log"
-	"time"
+	//"time"
 
 	"github.com/sarthak21-negi/distributed-file-storage/p2p"
 )
 
-func main(){
+func makeServer(listenAddr string, nodes ...string) *FileServer{
 	tcptransportOpts := p2p.TCPTransportOpts{
-		ListenAddr: ":3000",
+		ListenAddr: listenAddr,
 		HandshakeFunc: p2p.NOPHandshakeFunc,
 		Decoder: p2p.DefaultDecoder{},
 	}
@@ -17,20 +17,22 @@ func main(){
 	tcpTransport := p2p.NewTCPTransport(tcptransportOpts)
 
 	fileServerOpts := FileServerOpts{
-		StorageRoot: "3000_network",
+		StorageRoot: listenAddr + "_network",
 		PathTransformFunc: CASPathTransformFunc,
 		Transport: tcpTransport,
+		BootstrapNodes: nodes,
 	}
 
-	s := NewFileServer(fileServerOpts)
+	return NewFileServer(fileServerOpts)
+}
 
-	go func() {
-		time.Sleep(time.Second * 3)
-		s.Stop()
+func main(){
+	s1 := makeServer(":3000","")
+	s2 := makeServer(":4000", ":3000")
+
+	go func(){
+		log.Fatal(s1.Start())
 	}()
-	
-	if err := s.Start(); err != nil{
-		log.Fatal(err)
-	}
 
+	s2.Start()
 }
