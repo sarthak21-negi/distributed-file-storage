@@ -15,6 +15,7 @@ func (p *TCPPeer) Send(b []byte) error{
 	_,err := p.conn.Write(b)
 	return err
 }
+
 func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer{
 	return &TCPPeer{
 		conn: conn,
