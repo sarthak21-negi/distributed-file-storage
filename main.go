@@ -1,8 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"log"
-	//"time"
+	"time"
 
 	"github.com/sarthak21-negi/distributed-file-storage/p2p"
 )
@@ -37,5 +38,9 @@ func main(){
 		log.Fatal(s1.Start())
 	}()
 
-	s2.Start()
+	go s2.Start()
+	time.Sleep(1 * time.Second)
+
+	data := bytes.NewReader([]byte("my big data file here!"))
+	s2.StoreData("myprivatedata", data)
 }
