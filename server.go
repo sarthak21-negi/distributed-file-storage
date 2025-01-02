@@ -47,7 +47,7 @@ type Payload struct{
 	Data []byte
 }
 
-func (s *FileServer) broadcast(p Payload) error{
+func (s *FileServer) broadcast(p *Payload) error{
 	peers := []io.Writer{}
 	for _, peer := range s.peers {
 		peers = append(peers, peer)
@@ -59,21 +59,24 @@ func (s *FileServer) broadcast(p Payload) error{
 
 func (s *FileServer) StoreData(key string, r io.Reader) error{
 
+	if err := s.store.Write(key, r); err != nil {
+        return err
+    }
+
 	buf := new(bytes.Buffer)
 	_, err := io.Copy(buf, r)
-	if err != nil{
+	if err != nil {
 		return err
 	}
-
-	// Write the data using the store
-	if err := s.store.Write(key, r); err != nil {
-		return err
+	
+	p := &Payload{
+		Key: key,
+		Data: buf.Bytes(),
 	}
 
-	// Log the data written to the buffer
-	fmt.Println(buf.Bytes())
+    fmt.Println(buf.Bytes())
 
-	return nil
+    return s.broadcast(p)
 }
 
 func (s *FileServer) Stop() {

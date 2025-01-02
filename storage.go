@@ -20,20 +20,25 @@ const defaultRootFolderName = "ggnetwork"
 
 func CASPathTransformFunc(key string) PathKey{
 	hash := sha1.Sum([]byte(key))
-	hashStr := hex.EncodeToString(hash[:])
+    hashStr := hex.EncodeToString(hash[:])
 
-	blocksize := 5
-	sliceLen := len(hashStr) / blocksize
-	paths := make([]string, sliceLen)
+    // Replace colons or other invalid characters
+    hashStr = strings.ReplaceAll(hashStr, ":", "_")
 
-	for i := 0; i < sliceLen; i++ {
-		from, to := i*blocksize, (i*blocksize)+blocksize
-		paths[i] = hashStr[from:to]
-	}
-	return PathKey{
-		PathName: strings.Join(paths, "/"),
-		FileName: hashStr,
-	}
+    blocksize := 5
+    sliceLen := len(hashStr) / blocksize
+    paths := make([]string, sliceLen)
+
+    for i := 0; i < sliceLen; i++ {
+        from, to := i*blocksize, (i*blocksize)+blocksize
+        paths[i] = hashStr[from:to]
+    }
+
+    return PathKey{
+        PathName: strings.Join(paths, "/"),
+        FileName: hashStr,
+    }
+
 }
 
 type PathTransformFunc func(string) PathKey
@@ -128,25 +133,31 @@ func (s *Store) readStream(key string) (io.ReadCloser, error) {
 
 func(s *Store) writeStream(key string, r io.Reader) error{
 	pathKey := s.PathTransformFunc(key)
-	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
-	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
-		return err
-	}
+    pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, strings.ReplaceAll(pathKey.PathName, ":", "_"))
+    
+    fmt.Println("Creating directory:", pathNameWithRoot) // Debugging line
+    
+    if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
+        fmt.Println("Error creating directories:", err)
+        return err
+    } else {
+        fmt.Println("Directories created successfully")
+    }
 
-	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
-	f,err := os.Create(fullPathWithRoot)
-	if err != nil{
-		return err
-	}
-	defer f.Close()
+    fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+    fmt.Println("Creating file at:", fullPathWithRoot) // Debugging line
+    f, err := os.Create(fullPathWithRoot)
+    if err != nil {
+        return err
+    }
+    defer f.Close()
 
+    n, err := io.Copy(f, r)
+    if err != nil {
+        return err
+    }
 
-	n,err := io.Copy(f, r)
-	if err != nil{
-		return err
-	}
+    log.Printf("written (%d) bytes to disk: %s", n, fullPathWithRoot)
 
-	log.Printf("written (%d) bytes to disk: %s", n, fullPathWithRoot)
-
-	return nil
+    return nil
 }

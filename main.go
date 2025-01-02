@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/sarthak21-negi/distributed-file-storage/p2p"
@@ -18,10 +19,10 @@ func makeServer(listenAddr string, nodes ...string) *FileServer{
 	tcpTransport := p2p.NewTCPTransport(tcptransportOpts)
 
 	fileServerOpts := FileServerOpts{
-		StorageRoot: listenAddr + "_network",
-		PathTransformFunc: CASPathTransformFunc,
-		Transport: tcpTransport,
-		BootstrapNodes: nodes,
+		StorageRoot: strings.ReplaceAll(listenAddr, ":", "_") + "_network",  // Replace ':' with '_'
+        PathTransformFunc: CASPathTransformFunc,
+        Transport: tcpTransport,
+        BootstrapNodes: nodes,
 	}
 
 	s := NewFileServer(fileServerOpts)
@@ -43,4 +44,6 @@ func main(){
 
 	data := bytes.NewReader([]byte("my big data file here!"))
 	s2.StoreData("myprivatedata", data)
+
+	select {}
 }
