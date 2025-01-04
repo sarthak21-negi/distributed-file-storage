@@ -59,22 +59,17 @@ func (s *FileServer) broadcast(p *Payload) error{
 
 func (s *FileServer) StoreData(key string, r io.Reader) error{
 
-	if err := s.store.Write(key, r); err != nil {
+	buf := new(bytes.Buffer)
+	tee := io.TeeReader(r, buf)
+
+	if err := s.store.Write(key, tee); err != nil {
         return err
     }
-
-	buf := new(bytes.Buffer)
-	_, err := io.Copy(buf, r)
-	if err != nil {
-		return err
-	}
 	
 	p := &Payload{
 		Key: key,
 		Data: buf.Bytes(),
 	}
-
-    fmt.Println(buf.Bytes())
 
     return s.broadcast(p)
 }
@@ -99,10 +94,15 @@ func (s *FileServer) loop() {
 		log.Println("file server stopped due to user quit action")
 		s.Transport.Close()
 	}()
+
 	for{
 		select{
 		case msg := <-s.Transport.Consume():
-		fmt.Println(msg)
+			var p Payload
+			if err := gob.NewDecoder(bytes.NewReader(msg.Payload)).Decode(&p); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%+v\n", string(p.Data))
 		case <-s.quitch:
 			return
 		}

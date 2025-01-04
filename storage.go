@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 )
+
 type PathKey struct{
 	PathName string
 	FileName string
@@ -102,7 +103,7 @@ func (s *Store) Delete(key string) error{
 	pathKey := s.PathTransformFunc(key)
 	
 	defer func(){
-		log.Printf("deleted [%s] from disk", pathKey.PathName)
+		log.Printf("deleted [%s] from disk", pathKey.FileName)
 	}()
 
 	firstPathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FirstPathName())
