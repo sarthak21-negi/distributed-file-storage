@@ -41,6 +41,7 @@ func NewTCPTransport(opts TCPTransportOpts) *TCPTransport{
 		rpcch: make(chan RPC),
 	}
 }
+
 //Consume implements transport interface, will return read-only channel
 // for reading the incoming message received from incoming peer in the network
 func (t *TCPTransport) Consume() <-chan RPC {
