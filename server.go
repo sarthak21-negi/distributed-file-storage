@@ -44,8 +44,12 @@ func NewFileServer(opts FileServerOpts) *FileServer{
 }
 
 type Message struct{
-	// From string
 	Payload any
+}
+
+type MessageStoreFile struct {
+	Key string
+
 }
 
 func (s *FileServer) broadcast(msg *Message) error{
@@ -62,7 +66,9 @@ func (s *FileServer) StoreData(key string, r io.Reader) error{
 
 	buf := new(bytes.Buffer)
 	msg := Message{
-		Payload: []byte("storageKey"),
+		Payload: MessageStoreFile{
+			Key: key,
+		},
 	}
 	if err := gob.NewEncoder(buf).Encode(msg); err != nil{
 		return err
@@ -128,40 +134,38 @@ func (s *FileServer) loop() {
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
 				log.Println(err)
+				return
 			}
-
-			fmt.Printf("recv: %s\n", string(msg.Payload.([]byte)))
-			
-			peer, ok := s.peers[rpc.From]
-			if !ok{
-				panic("peer not found in peers map")
-			}
-
-			b := make ([]byte, 1000)
-			if _, err := peer.Read(b); err != nil{
-				panic(err)
+			if err := s.handleMessage(rpc.From, &msg); err != nil{
+				log.Println(err)
+				return
 			}
 			
-			fmt.Printf("%s\n", string(b))
-			
-			peer.(*p2p.TCPPeer).Wg.Done()
-			// if err := s.handleMessage(&m); err !=nil{
-			// 	log.Println(err)
-			// }
 		case <-s.quitch:
 			return
 		}
 	}
 }
 
-// func (s *FileServer) handleMessage(msg *Message) error{
-// 	switch v := msg.Payload.(type){
-// 	case *DataMessage:
-// 		fmt.Printf("received data %+v\n", v)
-// 	}
+func (s *FileServer) handleMessage(from string, msg *Message) error{
+	switch v := msg.Payload.(type){
+	case MessageStoreFile:
+		return s.handleMessageStoreFile(from, v)
+	}
 
-// 	return nil
-// }
+	return nil
+}
+
+func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) error{
+	peer, ok := s.peers[from]
+	if !ok{
+		return fmt.Errorf("peer (%s) could not be found in the peer list", from)
+	}
+
+	peer.(*p2p.TCPPeer).Wg.Done()
+	
+	return s.store.Write(msg.Key, peer)
+}
 
 func (s *FileServer) bootstrapNetwork() error{
 	for _, addr := range s.BootstrapNodes{
@@ -190,3 +194,8 @@ func (s *FileServer) Start() error{
 
 	return nil
 }
+
+func init() {
+	gob.Register(MessageStoreFile{})
+}
+
