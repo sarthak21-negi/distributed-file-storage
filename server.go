@@ -78,6 +78,32 @@ func (s *FileServer) broadcast(msg *Message) error{
 	return nil
 }
 
+type MessageGetFile struct{
+	Key string
+}
+
+func (s *FileServer) Get(key string) (io.Reader, error) {
+	if s.store.Has(key){
+		return s.store.Read(key)
+	}
+	
+	fmt.Printf("don't have file (%s) locally, fetching from network...\n", key)
+
+	msg := Message{
+		Payload: MessageGetFile{
+			Key: key,
+		},
+	}
+
+	if err := s.broadcast(&msg); err != nil{
+		return nil, err
+	}	
+	
+	select{}
+
+	return nil, nil
+}
+
 func (s *FileServer) StoreData(key string, r io.Reader) error{
 
 	var (
@@ -134,7 +160,7 @@ func (s *FileServer) OnPeer(p p2p.Peer) error{
 
 func (s *FileServer) loop() {
 	defer func(){
-		log.Println("file server stopped due to user quit action")
+		log.Println("file server stopped due error or to user quit action")
 		s.Transport.Close()
 	}()
 
@@ -143,12 +169,10 @@ func (s *FileServer) loop() {
 		case rpc := <-s.Transport.Consume():
 			var msg Message
 			if err := gob.NewDecoder(bytes.NewReader(rpc.Payload)).Decode(&msg); err != nil {
-				log.Println(err)
-				return
+				log.Println("decoding error: ", err)
 			}
 			if err := s.handleMessage(rpc.From, &msg); err != nil{
-				log.Println(err)
-				return
+				log.Println("handle message error: ", err)
 			}
 			
 		case <-s.quitch:
@@ -161,7 +185,33 @@ func (s *FileServer) handleMessage(from string, msg *Message) error{
 	switch v := msg.Payload.(type){
 	case MessageStoreFile:
 		return s.handleMessageStoreFile(from, v)
+	case MessageGetFile:
+		return s.handleMessageGetFile(from, v)
 	}
+	return nil
+}
+
+func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error{
+	if !s.store.Has(msg.Key){
+		return fmt.Errorf("need to serve file (%s) but it does not exist on disk", msg.Key)
+	}
+
+	r, err := s.store.Read(msg.Key)
+	if err != nil{
+		return err
+	}
+
+	peer, ok := s.peers[from]
+	if !ok{
+		return fmt.Errorf("peer %s not in map", from)
+	}
+
+	n, err := io.Copy(peer, r)
+	if err != nil{
+		return err
+	}
+
+	fmt.Printf("wrtitten %d bytes over the network to %s\n", n , from)
 
 	return nil
 }
@@ -214,5 +264,6 @@ func (s *FileServer) Start() error{
 
 func init() {
 	gob.Register(MessageStoreFile{})
+	gob.Register(MessageGetFile{})
 }
 

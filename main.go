@@ -1,10 +1,12 @@
 package main
 
 import (
-	"bytes"
+	//"bytes"
 	"log"
 	"strings"
 	"time"
+	"io"
+	"fmt"
 
 	"github.com/sarthak21-negi/distributed-file-storage/p2p"
 )
@@ -42,8 +44,20 @@ func main(){
 	go s2.Start()
 	time.Sleep(1 * time.Second)
 
-	data := bytes.NewReader([]byte("my big data file here!"))
-	s2.StoreData("myprivatedata", data)
+	// data := bytes.NewReader([]byte("my big data file here!"))
+	// s2.StoreData("myprivatedata", data)
+
+	r, err := s2.Get("anewkeywedon'thave")
+	if err != nil{
+		log.Fatal(err)
+	}
+
+	b, err := io.ReadAll(r)
+	if err != nil{
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(b))
 
 	select {}
 }
