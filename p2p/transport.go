@@ -8,6 +8,7 @@ type Peer interface {
 }
 
 type Transport interface {
+	Addr() string
 	Dial(string) error
 	ListenAndAccept() error
 	Consume() <-chan RPC
