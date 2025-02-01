@@ -149,22 +149,18 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	time.Sleep(time.Millisecond * 5)
 
-	peers := 
-	// to implement a multiwriter here
-	for _, peer := range s.peers {
-		peer.Send([]byte{p2p.IncomingStream})
-		n, err := copyEncrypt(s.EncKey, fileBuffer, peer)
+	peers := []io.Writer{}
+	for _, peer := range s.peers{
+		peers = append(peers, peer)
+	}
+	mw := io.MultiWriter(peers...)
+	mw.Write([]byte{p2p.IncomingStream})
+	n, err := copyEncrypt(s.EncKey, fileBuffer, mw)
 		if err != nil{
 			return err
 		}
-		// n, err := io.Copy(peer, fileBuffer)
 
-		// if err != nil {
-		// 	return err
-		// }
-
-		fmt.Println("received and written bytes to disk: ", n)
-	}
+		fmt.Printf("[%s] received and written bytes (%d) to disk\n ",s.Transport.Addr(), n)
 
 	return nil
 }
@@ -277,16 +273,19 @@ func (s *FileServer) bootstrapNetwork() error {
 		}
 
 		go func(addr string) {
-			fmt.Println("attempting to connect with remote: ", addr)
+			fmt.Printf("[%s] attempting to connect with remote %s\n ",s.Transport.Addr(), addr)
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("dial error: ", err)
 			}
 		}(addr)
 	}
+
 	return nil
 }
 
 func (s *FileServer) Start() error {
+	fmt.Printf("[%s] starting fileserver...\n", s.Transport.Addr())
+	
 	if err := s.Transport.ListenAndAccept(); err != nil {
 		return err
 	}
