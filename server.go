@@ -106,9 +106,10 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 	time.Sleep(time.Millisecond * 500)
 
 	for _, peer := range s.peers {
-		var fileSize int64 = 22
+		var fileSize int64 
 		binary.Read(peer, binary.LittleEndian, &fileSize)
-		n, err := s.store.Write(key, io.LimitReader(peer, 22))
+
+		n, err := s.store.WriteDecrypt(s.EncKey, key, io.LimitReader(peer, fileSize))
 		if  err != nil{
 			return nil, err
 		}
@@ -148,6 +149,7 @@ func (s *FileServer) StoreData(key string, r io.Reader) error {
 
 	time.Sleep(time.Millisecond * 5)
 
+	peers := 
 	// to implement a multiwriter here
 	for _, peer := range s.peers {
 		peer.Send([]byte{p2p.IncomingStream})
@@ -273,9 +275,9 @@ func (s *FileServer) bootstrapNetwork() error {
 		if len(addr) == 0 {
 			continue
 		}
+
 		go func(addr string) {
 			fmt.Println("attempting to connect with remote: ", addr)
-
 			if err := s.Transport.Dial(addr); err != nil {
 				log.Println("dial error: ", err)
 			}
