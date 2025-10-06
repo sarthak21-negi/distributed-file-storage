@@ -56,4 +56,5 @@ go mod tidy
 ---
 
 ### Run a Peer Node
+```bash
 go run main.go
